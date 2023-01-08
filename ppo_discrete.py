@@ -76,7 +76,7 @@ class PPO_Discrete:
                 max_trajectory_length=self.max_trajectory_length,
                 render_freq=self.render_freq,
                 device=self.device_infer,
-                n_workers=4)
+                n_workers=self.n_workers)
 
             logging.info('Training network')
 
