@@ -1,4 +1,5 @@
 import logging
+import os
 from datetime import datetime
 
 import gym
@@ -12,8 +13,9 @@ import torch
 
 
 def train():
-    env = gym.make('CartPole-v1')
-    ppo = PPO_Discrete(policy_class=MyNetwork,
+    env = gym.make('CartPole-v0')
+    ppo = PPO_Discrete(actor=MyNetwork(in_dim=4, out_dim=2),
+                       critic=MyNetwork(in_dim=4, out_dim=1),
                        env=env,
                        device_infer=device_infer,
                        device_train=device_train)
@@ -22,11 +24,11 @@ def train():
 
 
 def test():
-    env = gym.make('CartPole-v1')
+    env = gym.make('CartPole-v0')
 
     policy = MyNetwork(in_dim=env.observation_space.shape[0], out_dim=env.action_space.n)
 
-    policy.load_state_dict(torch.load('ppo_actor.pth'))
+    policy.load_state_dict(torch.load('saved_models/ppo_actor.pth', map_location=device_infer))
 
     for _ in range(100):
         state = env.reset()
@@ -62,10 +64,12 @@ def get_device():
 
 
 if __name__ == '__main__':
-    wandb.init(project='test-project-2', entity='point-goal-navigation', name=str(datetime.now()))
+    wandb.init(project='CartPole-v0', entity='point-goal-navigation', name=str(datetime.now()))
+
+    os.makedirs('saved_models', exist_ok=True)
 
     # device_infer is used by collector to get outputs and device_train is used to train the network
     device_infer, device_train = get_device()
 
-    train()
-    # test()
+    # train()
+    test()

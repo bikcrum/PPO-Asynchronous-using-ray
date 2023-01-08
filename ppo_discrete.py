@@ -1,6 +1,5 @@
 import itertools
 import logging
-
 import time
 
 import numpy as np
@@ -10,53 +9,54 @@ import torch.nn as nn
 from torch.distributions import kl_divergence
 from torch.distributions.categorical import Categorical
 from torch.optim import Adam
+
 import wandb
 
 ray.init(num_cpus=20, ignore_reinit_error=True)
+# ray.init(local_mode=True)
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
 
 
 class PPO_Discrete:
-    def __init__(self, policy_class, env, device_infer=torch.device('cpu'), device_train=torch.device('cpu')):
+    def __init__(self, actor, critic, env, device_infer=torch.device('cpu'), device_train=torch.device('cpu')):
         # HYPER PARAMETERS
 
-        # Total number of iterations each containing experience collection and learning
+        # Total number of time steps (frames) in environment in the entire training process
         self.n_epochs = 200_000_000
-        # Total number of steps taken in the environment including termination between each
-        self.n_timesteps = 2048
+        # Total number of steps taken that follows training the network
+        self.n_timesteps = 4000
         # Maximum number of steps taken in the environment if it does not terminate
-        self.max_trajectory_length = 200
+        self.max_trajectory_length = 500
         # Total number of training steps at each epoch
-        self.n_training_per_epoch = 10
-        # Learning rate
-        self.lr = 3e-4
+        self.n_training_per_epoch = 80
+        # Learning rate for actor
+        self.actor_lr = 3e-4
+        # Learning rate for critic
+        self.critic_lr = 1e-3
         # Discount factor
-        self.gamma = 0.99
+        self.gamma = 0.95
         # Surrogate clip for actor loss
         self.clip = 0.2
         # KL above threshold terminates the learning
-        self.kl_threshold = 0.02
+        self.kl_threshold = 0.05
         # Entropy penalty to encourage exploration and prevent policy from becoming too deterministic
-        self.entropy_coef = 0.01
+        self.entropy_coef = 0
         # Timestep at which environment should render. There will be n_"timesteps / render_freq" total renders
         self.render_freq = 0
         # Number of workers that collects data parallely. Each will collect "n_timesteps / n_worker" timesteps
-        self.n_workers = 4
+        self.n_workers = 8
 
         self.device_infer = device_infer
         self.device_train = device_train
 
         self.env = env
-        self.obs_dim = env.observation_space.shape[0]
-        self.act_dim = env.action_space.n
 
-        self.policy_class = policy_class
-        self.actor = policy_class(self.obs_dim, self.act_dim)
-        self.critic = policy_class(self.obs_dim, 1)
+        self.actor = actor
+        self.critic = critic
 
-        self.actor_optim = Adam(self.actor.parameters(), lr=self.lr)
-        self.critic_optim = Adam(self.critic.parameters(), lr=self.lr)
+        self.actor_optim = Adam(self.actor.parameters(), lr=self.actor_lr)
+        self.critic_optim = Adam(self.critic.parameters(), lr=self.critic_lr)
 
     def learn(self):
         curr_epochs = 0
@@ -67,7 +67,7 @@ class PPO_Discrete:
 
         while not learning_complete and curr_epochs < self.n_epochs:
             logging.info(f'EPOCH:{curr_epochs} Collecting experience')
-            (states, actions, values, returns), (lengths, rewards) = self._rollout(
+            (states, actions, values, returns), (lengths, rewards) = PPO_Discrete._rollout(
                 actor=self.actor,
                 critic=self.critic,
                 env=self.env,
@@ -101,7 +101,7 @@ class PPO_Discrete:
             advantage = (advantage - advantage.mean()) / (advantage.std() + 1e-10)
 
             for _ in range(self.n_training_per_epoch):
-                curr_pdf = self._get_action_pdf(self.actor, states)
+                curr_pdf = PPO_Discrete._get_action_pdf(self.actor, states)
                 curr_log_probs = curr_pdf.log_prob(actions)
 
                 ratios = torch.exp(curr_log_probs - log_probs)
@@ -128,12 +128,13 @@ class PPO_Discrete:
                 with torch.no_grad():
                     kls.append(kl_divergence(pdf, curr_pdf).mean().item())
                     if kls[-1] > self.kl_threshold:
+                        logging.info("KL threshold reached.")
                         learning_complete = True
                         break
 
             reward = np.mean([np.sum(ep_rewards) for ep_rewards in rewards])
             wandb.log({'reward': reward,
-                       'episode length': np.mean([np.sum(ep_rewards) for ep_rewards in rewards]),
+                       'episode length': np.mean(lengths),
                        'actor loss': np.mean(actor_losses),
                        'critic loss': np.mean(critic_losses),
                        'time steps': curr_epochs,
@@ -141,8 +142,8 @@ class PPO_Discrete:
                        'kl divergence': np.mean(kls)})
 
             if reward > max_reward:
-                torch.save(self.actor.state_dict(), 'ppo_actor.pth')
-                torch.save(self.critic.state_dict(), 'ppo_critic.pth')
+                torch.save(self.actor.state_dict(), 'saved_models/ppo_actor.pth')
+                torch.save(self.critic.state_dict(), 'saved_models/ppo_critic.pth')
                 max_reward = reward
 
     @staticmethod
@@ -169,7 +170,7 @@ class PPO_Discrete:
                     for curr_traj in range(max_trajectory_length):
                         curr_timesteps += 1
 
-                        state = torch.tensor(state, device=device)
+                        state = torch.tensor(state, device=device, dtype=torch.float)
                         states.append(state)
 
                         action = get_action(state)
@@ -189,19 +190,21 @@ class PPO_Discrete:
                         if done:
                             break
 
-                    value = 0 if done else critic(torch.tensor(state))
+                    value = 0 if done else critic(torch.tensor(state, device=device, dtype=torch.float))
                     ep_returns = PPO_Discrete._compute_returns(terminal_value=value, ep_reward=ep_rewards, gamma=gamma)
 
                     lengths.append(len(ep_rewards))
                     rewards.append(ep_rewards)
                     returns += ep_returns
 
-            states = torch.stack(states)
-            actions = torch.tensor(actions)
-            values = torch.tensor(values)
-            returns = torch.tensor(returns)
+            states = torch.stack(states).squeeze()
+            actions = torch.stack(actions).squeeze()
+            values = torch.stack(values).squeeze()
+            returns = torch.tensor(returns).squeeze()
 
             return states, actions, values, returns, lengths, rewards
+
+        # return worker(0)
 
         out = list(zip(*ray.get([worker.remote(i) for i in range(n_workers)])))
 
