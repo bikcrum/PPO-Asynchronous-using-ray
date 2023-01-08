@@ -48,7 +48,7 @@ def test():
 
 def get_device():
     if torch.cuda.is_available():
-        return torch.device("cuda"), torch.device("cuda")
+        return torch.device("cpu"), torch.device("cuda")
     else:
         try:
             # For apple silicon

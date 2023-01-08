@@ -12,6 +12,7 @@ from torch.distributions.categorical import Categorical
 from torch.optim import Adam
 import wandb
 
+ray.init(num_cpus=20, ignore_reinit_error=True)
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
 
@@ -168,7 +169,7 @@ class PPO_Discrete:
                     for curr_traj in range(max_trajectory_length):
                         curr_timesteps += 1
 
-                        state = torch.tensor(state)
+                        state = torch.tensor(state, device=device)
                         states.append(state)
 
                         action = get_action(state)
