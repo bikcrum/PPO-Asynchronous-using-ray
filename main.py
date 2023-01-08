@@ -71,5 +71,5 @@ if __name__ == '__main__':
     # device_infer is used by collector to get outputs and device_train is used to train the network
     device_infer, device_train = get_device()
 
-    # train()
-    test()
+    train()
+    # test()
