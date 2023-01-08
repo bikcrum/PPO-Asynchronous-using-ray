@@ -14,8 +14,8 @@ import torch
 
 def train():
     env = gym.make('CartPole-v0')
-    ppo = PPO_Discrete(actor=MyNetwork(in_dim=4, out_dim=2),
-                       critic=MyNetwork(in_dim=4, out_dim=1),
+    ppo = PPO_Discrete(actor=MyNetwork(in_dim=env.observation_space.shape[0], out_dim=env.action_space.n),
+                       critic=MyNetwork(in_dim=env.observation_space.shape[0], out_dim=1),
                        env=env,
                        device_infer=device_infer,
                        device_train=device_train)
