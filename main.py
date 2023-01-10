@@ -58,7 +58,7 @@ def test():
 
     policy = MyNetwork(in_dim=env.observation_space.shape[0], out_dim=env.action_space.n)
 
-    policy.load_state_dict(torch.load('saved_models/ppo_actor.pth', map_location=device_infer))
+    policy.load_state_dict(torch.load('saved_models/ppo_actor-CartPole-v0.pth', map_location=device_infer))
 
     for _ in range(100):
         state = env.reset()
