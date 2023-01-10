@@ -102,7 +102,8 @@ def get_device():
 
 
 if __name__ == '__main__':
-    wandb.init(project='CartPole-v0', entity='Classic-Control', name=str(datetime.now()))
+    # Edit entries here
+    wandb.init(project='CartPole-v0', entity='point-goal-navigation', name=str(datetime.now()))
     # wandb.init(project='MountainCar-v0', entity='point-goal-navigation', name=str(datetime.now()))
     # wandb.init(project='Acrobot-v1', entity='point-goal-navigation', name=str(datetime.now()))
 
