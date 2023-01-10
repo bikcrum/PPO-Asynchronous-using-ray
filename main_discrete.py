@@ -7,7 +7,7 @@ from torch.distributions import Categorical
 
 import wandb
 
-from network import MyNetwork
+from network_discrete import MyNetwork
 from ppo_discrete import PPO_Discrete
 import torch
 
