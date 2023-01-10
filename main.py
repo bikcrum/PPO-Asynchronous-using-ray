@@ -14,7 +14,8 @@ import torch
 
 def train():
     # env_name = 'CartPole-v0'
-    env_name = 'MountainCar-v0'
+    # env_name = 'MountainCar-v0'
+    env_name = 'Acrobot-v1'
 
     env = gym.make(env_name)
 
@@ -39,7 +40,7 @@ def train():
         # Entropy penalty to encourage exploration and prevent policy from becoming too deterministic
         entropy_coef=0.01,
         # Timestep at which environment should render. There will be n_"timesteps / render_freq" total renders
-        render_freq=10,
+        render_freq=0,
         # Number of workers that collects data parallely. Each will collect "n_timesteps / n_worker" timesteps
         n_workers=8
     )
@@ -57,12 +58,14 @@ def train():
 
 def test():
     # env = gym.make('CartPole-v0')
-    env = gym.make('MountainCar-v0')
+    # env = gym.make('MountainCar-v0')
+    env = gym.make('Acrobot-v1')
 
     policy = MyNetwork(in_dim=env.observation_space.shape[0], out_dim=env.action_space.n)
 
     # policy.load_state_dict(torch.load('saved_models/ppo_actor-CartPole-v0.pth', map_location=device_infer))
-    policy.load_state_dict(torch.load('saved_models/ppo_actor-MountainCar-v0.pth', map_location=device_infer))
+    # policy.load_state_dict(torch.load('saved_models/ppo_actor-MountainCar-v0.pth', map_location=device_infer))
+    policy.load_state_dict(torch.load('saved_models/ppo_actor-Acrobot-v1.pth', map_location=device_infer))
 
     for _ in range(100):
         state = env.reset()
@@ -99,7 +102,8 @@ def get_device():
 
 if __name__ == '__main__':
     # wandb.init(project='CartPole-v0', entity='point-goal-navigation', name=str(datetime.now()))
-    wandb.init(project='MountainCar-v0', entity='point-goal-navigation', name=str(datetime.now()))
+    # wandb.init(project='MountainCar-v0', entity='point-goal-navigation', name=str(datetime.now()))
+    wandb.init(project='Acrobot-v1', entity='point-goal-navigation', name=str(datetime.now()))
 
     os.makedirs('saved_models', exist_ok=True)
 
