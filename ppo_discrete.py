@@ -19,34 +19,26 @@ logging.getLogger().setLevel(logging.INFO)
 
 
 class PPO_Discrete:
-    def __init__(self, actor, critic, env, device_infer=torch.device('cpu'), device_train=torch.device('cpu')):
+    def __init__(self, training_name,
+                 actor, critic, env, device_infer=torch.device('cpu'),
+                 device_train=torch.device('cpu'),
+                 hyper_params=None):
+
         # HYPER PARAMETERS
+        self.n_epochs = hyper_params['n_epochs']
+        self.n_timesteps = hyper_params['n_timesteps']
+        self.max_trajectory_length = hyper_params['max_trajectory_length']
+        self.n_training_per_epoch = hyper_params['n_training_per_epoch']
+        self.actor_lr = hyper_params['actor_lr']
+        self.critic_lr = hyper_params['critic_lr']
+        self.gamma = hyper_params['gamma']
+        self.clip = hyper_params['clip']
+        self.kl_threshold = hyper_params['kl_threshold']
+        self.entropy_coef = hyper_params['entropy_coef']
+        self.render_freq = hyper_params['render_freq']
+        self.n_workers = hyper_params['n_workers']
 
-        # Total number of time steps (frames) in environment in the entire training process
-        self.n_epochs = 200_000_000
-        # Total number of steps taken that follows training the network
-        self.n_timesteps = 4000
-        # Maximum number of steps taken in the environment if it does not terminate
-        self.max_trajectory_length = 500
-        # Total number of training steps at each epoch
-        self.n_training_per_epoch = 80
-        # Learning rate for actor
-        self.actor_lr = 3e-4
-        # Learning rate for critic
-        self.critic_lr = 1e-3
-        # Discount factor
-        self.gamma = 0.95
-        # Surrogate clip for actor loss
-        self.clip = 0.2
-        # KL above threshold terminates the learning
-        self.kl_threshold = 0.05
-        # Entropy penalty to encourage exploration and prevent policy from becoming too deterministic
-        self.entropy_coef = 0
-        # Timestep at which environment should render. There will be n_"timesteps / render_freq" total renders
-        self.render_freq = 0
-        # Number of workers that collects data parallely. Each will collect "n_timesteps / n_worker" timesteps
-        self.n_workers = 8
-
+        self.training_name = training_name
         self.device_infer = device_infer
         self.device_train = device_train
 
@@ -122,13 +114,13 @@ class PPO_Discrete:
                 self.actor_optim.step()
                 self.critic_optim.step()
 
-                actor_losses.append(actor_loss.item())
+                actor_losses.append((actor_loss + entropy_penalty).item())
                 critic_losses.append(critic_loss.item())
 
                 with torch.no_grad():
                     kls.append(kl_divergence(pdf, curr_pdf).mean().item())
                     if kls[-1] > self.kl_threshold:
-                        logging.info("KL threshold reached.")
+                        logging.info(f"KL threshold reached. {kls[-1]}")
                         learning_complete = True
                         break
 
@@ -142,8 +134,8 @@ class PPO_Discrete:
                        'kl divergence': np.mean(kls)})
 
             if reward > max_reward:
-                torch.save(self.actor.state_dict(), 'saved_models/ppo_actor.pth')
-                torch.save(self.critic.state_dict(), 'saved_models/ppo_critic.pth')
+                torch.save(self.actor.state_dict(), f'saved_models/ppo_actor-{self.training_name}.pth')
+                torch.save(self.critic.state_dict(), f'saved_models/ppo_critic-{self.training_name}.pth')
                 max_reward = reward
 
     @staticmethod

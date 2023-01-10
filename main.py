@@ -13,12 +13,42 @@ import torch
 
 
 def train():
-    env = gym.make('CartPole-v0')
-    ppo = PPO_Discrete(actor=MyNetwork(in_dim=env.observation_space.shape[0], out_dim=env.action_space.n),
+    env_name = 'CartPole-v0'
+    env = gym.make(env_name)
+
+    hyper_params = dict(
+        n_epochs=200_000_000,
+        # Total number of steps taken that follows training the network
+        n_timesteps=4000,
+        # Maximum number of steps taken in the environment if it does not terminate
+        max_trajectory_length=500,
+        # Total number of training steps at each epoch
+        n_training_per_epoch=80,
+        # Learning rate for actor
+        actor_lr=3e-4,
+        # Learning rate for critic
+        critic_lr=1e-3,
+        # Discount factor
+        gamma=0.99,
+        # Surrogate clip for actor loss
+        clip=0.2,
+        # KL above threshold terminates the learning
+        kl_threshold=0.1,
+        # Entropy penalty to encourage exploration and prevent policy from becoming too deterministic
+        entropy_coef=0.0001,
+        # Timestep at which environment should render. There will be n_"timesteps / render_freq" total renders
+        render_freq=10,
+        # Number of workers that collects data parallely. Each will collect "n_timesteps / n_worker" timesteps
+        n_workers=8
+    )
+
+    ppo = PPO_Discrete(training_name=env_name,
+                       actor=MyNetwork(in_dim=env.observation_space.shape[0], out_dim=env.action_space.n),
                        critic=MyNetwork(in_dim=env.observation_space.shape[0], out_dim=1),
                        env=env,
                        device_infer=device_infer,
-                       device_train=device_train)
+                       device_train=device_train,
+                       hyper_params=hyper_params)
 
     ppo.learn()
 
