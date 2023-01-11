@@ -20,7 +20,7 @@ ray.init(num_cpus=20, ignore_reinit_error=True)
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
 
-debug = True
+debug = False
 
 
 class Utils:
