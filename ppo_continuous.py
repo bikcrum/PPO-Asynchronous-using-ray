@@ -59,7 +59,7 @@ class PPO_Continuous:
 
         while not learning_complete and curr_epochs < self.n_epochs:
             logging.info(f'EPOCH:{curr_epochs} Collecting experience')
-            (states, actions, values, returns), (lengths, rewards) = PPO_Continuous._rollout(
+            (states, actions, values, returns), (lengths, rewards)= PPO_Continuous._rollout(
                 actor=self.actor,
                 critic=self.critic,
                 env=self.env,
@@ -191,7 +191,7 @@ class PPO_Continuous:
                     returns += ep_returns
 
             states = torch.stack(states).squeeze()
-            actions = torch.stack(actions).squeeze()
+            actions = torch.stack(actions)
             values = torch.stack(values).squeeze()
             returns = torch.tensor(returns, dtype=torch.float32).squeeze()
 

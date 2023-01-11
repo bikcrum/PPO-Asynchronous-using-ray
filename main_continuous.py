@@ -11,7 +11,8 @@ from ppo_continuous import PPO_Continuous
 
 
 def train():
-    env_name = 'BipedalWalker-v3'
+    # env_name = 'BipedalWalker-v3'
+    env_name = 'Pendulum-v1'
 
     env = gym.make(env_name)
 
@@ -53,11 +54,13 @@ def train():
 
 
 def test():
-    env = gym.make('BipedalWalker-v3')
+    # env = gym.make('BipedalWalker-v3')
+    env = gym.make('Pendulum-v1')
 
     policy = ActorNetwork(in_dim=env.observation_space.shape[0], out_dim=env.action_space.shape[0])
 
-    policy.load_state_dict(torch.load('saved_models/ppo_actor-BipedalWalker-v3.pth', map_location=device_infer))
+    # policy.load_state_dict(torch.load('saved_models/ppo_actor-BipedalWalker-v3.pth', map_location=device_infer))
+    policy.load_state_dict(torch.load('saved_models/ppo_actor-Pendulum-v1.pth', map_location=device_infer))
 
     for _ in range(100):
         state = env.reset()
@@ -94,7 +97,8 @@ def get_device():
 
 if __name__ == '__main__':
     # Edit entries here
-    wandb.init(project='BipedalWalker-v3', entity='point-goal-navigation', name=str(datetime.now()))
+    # wandb.init(project='BipedalWalker-v3', entity='point-goal-navigation', name=str(datetime.now()))
+    wandb.init(project='Pendulum-v1', entity='point-goal-navigation', name=str(datetime.now()))
 
     os.makedirs('saved_models', exist_ok=True)
 
