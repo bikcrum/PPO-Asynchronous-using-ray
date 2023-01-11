@@ -14,8 +14,8 @@ from torch.optim import Adam
 
 import wandb
 
-# ray.init(num_cpus=20, ignore_reinit_error=True)
-ray.init(local_mode=True)
+ray.init(num_cpus=20, ignore_reinit_error=True)
+# ray.init(local_mode=True)
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
