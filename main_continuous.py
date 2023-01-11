@@ -10,9 +10,9 @@ from network_continuous import ActorNetwork, CriticNetwork
 from ppo_continuous import PPO_Continuous
 
 
-def train():
-    # env_name = 'BipedalWalker-v3'
-    env_name = 'Pendulum-v1'
+def train(env_name):
+    os.makedirs('saved_models', exist_ok=True)
+    wandb.init(project=env_name, entity='point-goal-navigation', name=str(datetime.now()))
 
     env = gym.make(env_name)
 
@@ -35,7 +35,7 @@ def train():
         # KL above threshold terminates the learning
         kl_threshold=float('inf'),
         # Entropy penalty to encourage exploration and prevent policy from becoming too deterministic
-        entropy_coef=0.001,
+        entropy_coef=0.02,
         # Timestep at which environment should render. There will be n_"timesteps / render_freq" total renders
         render_freq=0,
         # Number of workers that collects data parallely. Each will collect "n_timesteps / n_worker" timesteps
@@ -53,14 +53,12 @@ def train():
     ppo.learn()
 
 
-def test():
-    # env = gym.make('BipedalWalker-v3')
-    env = gym.make('Pendulum-v1')
+def test(env_name):
+    env = gym.make(env_name)
 
     policy = ActorNetwork(in_dim=env.observation_space.shape[0], out_dim=env.action_space.shape[0])
 
-    # policy.load_state_dict(torch.load('saved_models/ppo_actor-BipedalWalker-v3.pth', map_location=device_infer))
-    policy.load_state_dict(torch.load('saved_models/ppo_actor-Pendulum-v1.pth', map_location=device_infer))
+    policy.load_state_dict(torch.load(f'saved_models/ppo_actor-{env_name}.pth', map_location=device_infer))
 
     for _ in range(100):
         state = env.reset()
@@ -68,7 +66,7 @@ def test():
 
         traj_reward = 0
         while not done:
-            pdf = PPO_Continuous._get_action_pdf(policy, torch.tensor(state))
+            pdf = PPO_Continuous._get_action_pdf(policy, torch.tensor(state).float())
 
             action = pdf.sample().numpy()
 
@@ -96,14 +94,12 @@ def get_device():
 
 
 if __name__ == '__main__':
-    # Edit entries here
-    # wandb.init(project='BipedalWalker-v3', entity='point-goal-navigation', name=str(datetime.now()))
-    wandb.init(project='Pendulum-v1', entity='point-goal-navigation', name=str(datetime.now()))
-
-    os.makedirs('saved_models', exist_ok=True)
-
     # device_infer is used by collector to get outputs and device_train is used to train the network
     device_infer, device_train = get_device()
 
-    train()
-    # test()
+    # Edit entries here
+    # env_name = 'BipedalWalker-v3'
+    # env_name = 'Pendulum-v1'
+    env_name = 'HalfCheetah-v2'
+    train(env_name)
+    # test(env_name)
