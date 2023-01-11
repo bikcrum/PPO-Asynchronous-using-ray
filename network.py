@@ -2,9 +2,9 @@ import torch.nn.functional as F
 from torch import nn
 
 
-class ActorNetwork(nn.Module):
+class ActorNetworkContinuous(nn.Module):
     def __init__(self, in_dim, out_dim):
-        super(ActorNetwork, self).__init__()
+        super(ActorNetworkContinuous, self).__init__()
 
         self.fc1 = nn.Linear(in_dim, 64)
         self.fc2 = nn.Linear(64, 64)
@@ -20,9 +20,9 @@ class ActorNetwork(nn.Module):
         return out_mu, out_sigma
 
 
-class CriticNetwork(nn.Module):
+class CriticNetworkContinuous(nn.Module):
     def __init__(self, in_dim, out_dim):
-        super(CriticNetwork, self).__init__()
+        super(CriticNetworkContinuous, self).__init__()
 
         self.fc1 = nn.Linear(in_dim, 64)
         self.fc2 = nn.Linear(64, 64)
@@ -34,3 +34,19 @@ class CriticNetwork(nn.Module):
         out = F.tanh(self.fc3(out))
 
         return out
+
+
+class NetworkDiscrete(nn.Module):
+    def __init__(self, in_dim, out_dim):
+        super(NetworkDiscrete, self).__init__()
+
+        self.fc1 = nn.Linear(in_dim, 64)
+        self.fc2 = nn.Linear(64, 64)
+        self.fc3 = nn.Linear(64, out_dim)
+
+    def forward(self, obs):
+        relu1 = F.relu(self.fc1(obs))
+        relu2 = F.relu(self.fc2(relu1))
+        output = self.fc3(relu2)
+
+        return output

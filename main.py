@@ -1,21 +1,19 @@
 import logging
 import os
-from datetime import datetime
 
 import gym
 import torch
 
-import wandb
-from network_continuous import ActorNetwork, CriticNetwork
-from ppo_continuous import PPO_Continuous
+from network import ActorNetworkContinuous, CriticNetworkContinuous, NetworkDiscrete
+from ppo import PPO, Utils
 
 
 def train(env_name):
     os.makedirs('saved_models', exist_ok=True)
-    wandb.init(project=env_name, entity='point-goal-navigation', name=str(datetime.now()))
 
     env = gym.make(env_name)
 
+    # HYPER PARAMETERS
     hyper_params = dict(
         n_epochs=200_000_000,
         # Total number of steps taken that follows training the network
@@ -39,16 +37,24 @@ def train(env_name):
         # Timestep at which environment should render. There will be n_"timesteps / render_freq" total renders
         render_freq=0,
         # Number of workers that collects data parallely. Each will collect "n_timesteps / n_worker" timesteps
-        n_workers=8
+        n_workers=16
     )
 
-    ppo = PPO_Continuous(training_name=env_name,
-                         actor=ActorNetwork(in_dim=env.observation_space.shape[0], out_dim=env.action_space.shape[0]),
-                         critic=CriticNetwork(in_dim=env.observation_space.shape[0], out_dim=1),
-                         env=env,
-                         device_infer=device_infer,
-                         device_train=device_train,
-                         hyper_params=hyper_params)
+    if is_continuous:
+        actor = ActorNetworkContinuous(in_dim=env.observation_space.shape[0], out_dim=env.action_space.shape[0])
+        critic = CriticNetworkContinuous(in_dim=env.observation_space.shape[0], out_dim=1)
+    else:
+        actor = NetworkDiscrete(in_dim=env.observation_space.shape[0], out_dim=env.action_space.n)
+        critic = NetworkDiscrete(in_dim=env.observation_space.shape[0], out_dim=1)
+
+    ppo = PPO(training_name=env_name,
+              actor=actor,
+              critic=critic,
+              env=env,
+              is_continuous=is_continuous,
+              device_infer=device_infer,
+              device_train=device_train,
+              hyper_params=hyper_params)
 
     ppo.learn()
 
@@ -56,7 +62,10 @@ def train(env_name):
 def test(env_name):
     env = gym.make(env_name)
 
-    policy = ActorNetwork(in_dim=env.observation_space.shape[0], out_dim=env.action_space.shape[0])
+    if is_continuous:
+        policy = ActorNetworkContinuous(in_dim=env.observation_space.shape[0], out_dim=env.action_space.shape[0])
+    else:
+        policy = NetworkDiscrete(in_dim=env.observation_space.shape[0], out_dim=env.action_space.n)
 
     policy.load_state_dict(torch.load(f'saved_models/ppo_actor-{env_name}.pth', map_location=device_infer))
 
@@ -66,9 +75,7 @@ def test(env_name):
 
         traj_reward = 0
         while not done:
-            pdf = PPO_Continuous._get_action_pdf(policy, torch.tensor(state).float())
-
-            action = pdf.sample().numpy()
+            action = Utils.get_action(policy, state, is_continuous=is_continuous).numpy()
 
             state, reward, done, info = env.step(action)
 
@@ -98,8 +105,12 @@ if __name__ == '__main__':
     device_infer, device_train = get_device()
 
     # Edit entries here
-    # env_name = 'BipedalWalker-v3'
-    # env_name = 'Pendulum-v1'
-    env_name = 'HalfCheetah-v2'
+    # env_name, is_continuous = 'Acrobot-v1', False
+    # env_name, is_continuous = 'BipedalWalker-v3', True
+    # env_name, is_continuous = 'CartPole-v0', False
+    # env_name, is_continuous = 'HalfCheetah-v2', True
+    # env_name, is_continuous = 'MountainCar-v0', False
+    # env_name, is_continuous = 'MountainCarContinuous-v0', True
+    env_name, is_continuous = 'Pendulum-v1', True
     train(env_name)
     # test(env_name)
